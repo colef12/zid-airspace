@@ -33,12 +33,12 @@
   .sec{stroke-width:1;vector-effect:non-scaling-stroke;cursor:pointer;transition:fill-opacity .12s}
   .aol{fill:none;stroke-width:2.5;vector-effect:non-scaling-stroke;pointer-events:none}
   .bnd{fill:none;stroke:#52525b;stroke-width:1.5;stroke-dasharray:6 4;vector-effect:non-scaling-stroke;pointer-events:none}
-  .trc{fill:none;stroke:#a1a1aa;stroke-width:1;stroke-dasharray:2 3;vector-effect:non-scaling-stroke;pointer-events:none;opacity:.7}
+  .trc{fill:none;stroke:#a1a1aa;stroke-width:1.25;vector-effect:non-scaling-stroke;pointer-events:none;opacity:.85}
   .lbl{font:700 12px ui-sans-serif,system-ui,sans-serif;text-anchor:middle;dominant-baseline:middle;pointer-events:none;paint-order:stroke;stroke:#18181b;stroke-width:3px;stroke-linejoin:round}
   .lbl .sub{font-size:10px;font-weight:600;opacity:.85}
   .apt circle{fill:#d4d4d8}
   .apt text{font:600 10px ui-monospace,Menlo,monospace;fill:#a1a1aa;paint-order:stroke;stroke:#18181b;stroke-width:3px}
-  .trl{font:600 10px ui-monospace,Menlo,monospace;fill:#a1a1aa;text-anchor:middle;paint-order:stroke;stroke:#18181b;stroke-width:3px}
+  .trl{font:600 9px ui-monospace,Menlo,monospace;fill:#a1a1aa;opacity:.85;text-anchor:middle;paint-order:stroke;stroke:#18181b;stroke-width:3px}
   #tip{position:absolute;pointer-events:none;background:#18181b;border:1.5px solid;border-radius:8px;padding:6px 10px;display:none;z-index:9;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.5)}
   #tip b{display:block;font-size:14px;color:#fff}
   #tip span{font:12px ui-monospace,Menlo,monospace}
@@ -97,7 +97,7 @@
   <div class="spacer"></div>
   <div class="tog">
     <label><input type="checkbox" id="tApt" checked> Airports</label>
-    <label><input type="checkbox" id="tTrc"> TRACONs</label>
+    <label><input type="checkbox" id="tTrc" checked> TRACONs</label>
     <label><input type="checkbox" id="tLbl" checked> Labels</label>
   </div>
 </header>
@@ -146,7 +146,7 @@ if (hm[1] && +hm[1]) st.fl = +hm[1];
 // boundary + tracons (static)
 D.boundary.forEach(r => el('path',{d:pathOf([r]),class:'bnd'},$('#gBnd')));
 D.tracons.forEach(t => {
-  t.lines.filter(l => l.length>1).forEach(l => el('path',{d:lineOf(l),class:'trc'},$('#gTrc')));
+  el('path',{d:pathOf(t.rings),class:'trc'},$('#gTrc'));
 });
 
 // ---------- visible sectors (grouped when sharing a footprint)
@@ -202,10 +202,6 @@ function labels(){
     const t=el('text',{x,y:y-(g.length-1)*7,class:'lbl',fill:c,opacity:st.area&&st.area!==s.area?.25:1},gL);
     g.forEach((s2,j)=>{ const ts=el('tspan',{x,dy:j?14:0},t); ts.textContent=tag(s2); });
     if (st.mode==='ALT' && st.k>1.3){ const ts=el('tspan',{x,dy:13,class:'sub'},t); ts.textContent=s.strat; }
-  });
-  if ($('#tTrc').checked) D.tracons.forEach(t=>{
-    let xs=0,ys=0,n=0; t.lines.forEach(l=>l.forEach(c=>{xs+=c[0];ys+=c[1];n++;}));
-    const [x,y]=scr(P([xs/n,ys/n])); el('text',{x,y,class:'trl'},gL).textContent=t.name+' APP';
   });
   if ($('#tApt').checked) APTS.forEach(([n,la,lo])=>{
     const [x,y]=scr(P([lo,la])); el('circle',{cx:x,cy:y,r:2.2},gP); el('text',{x:x+5,y:y-4},gP).textContent=n;
@@ -298,7 +294,6 @@ function detail(){
 document.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>{ st.mode=b.dataset.m; render(); });
 $('#alt').oninput=e=>{ st.fl=+e.target.value; render(); };
 ['#tApt','#tTrc','#tLbl'].forEach(i=>$(i).onchange=()=>{ $('#gTrc').style.display=$('#tTrc').checked?'':'none'; labels(); });
-$('#gTrc').style.display='none';
 $('#search').oninput=e=>{ st.q=e.target.value; list(); };
 window.addEventListener('keydown',e=>{ if(e.target.tagName==='INPUT') return;
   const m={'1':'LO','2':'HI','3':'IM','4':'SH','5':'ALT'}[e.key]; if(m){ st.mode=m; render(); }
