@@ -37,6 +37,17 @@
   .nbs{fill:none;stroke:#a1a1aa;stroke-width:1.5;vector-effect:non-scaling-stroke;pointer-events:none;opacity:.85}
   .nbl{font:700 11px ui-sans-serif,system-ui,sans-serif;text-anchor:middle;dominant-baseline:middle;pointer-events:none;fill:#a1a1aa;paint-order:stroke;stroke:#18181b;stroke-width:3px;stroke-linejoin:round}
   .nbl .sub{font-size:9.5px;font-weight:500;fill:#8b8b94}
+  .pr{fill:none;stroke-width:1.4;vector-effect:non-scaling-stroke;pointer-events:none;opacity:.9}
+  .prh{fill:none;stroke:transparent;stroke-width:9;vector-effect:non-scaling-stroke;cursor:pointer}
+  .pr.SID{stroke:#fb923c} .pr.STAR{stroke:#22d3ee}
+  .pr.dim{opacity:.18} .pr.hi{stroke-width:3;opacity:1}
+  .fx{font:600 9.5px ui-monospace,Menlo,monospace;fill:#d4d4d8;paint-order:stroke;stroke:#18181b;stroke-width:3px}
+  .pn{font:700 10.5px ui-monospace,Menlo,monospace;paint-order:stroke;stroke:#18181b;stroke-width:3px}
+  .pn.SID{fill:#fb923c} .pn.STAR{fill:#22d3ee}
+  .apt circle{cursor:pointer}
+  #procBox{display:none;gap:6px;align-items:center}
+  #procBox.on{display:flex}
+  #procBox select{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:5px 6px;font:12px inherit}
   .trc{fill:none;stroke:#a1a1aa;stroke-width:1.25;vector-effect:non-scaling-stroke;pointer-events:none;opacity:.85}
   .lbl{font:700 12px ui-sans-serif,system-ui,sans-serif;text-anchor:middle;dominant-baseline:middle;pointer-events:none;paint-order:stroke;stroke:#18181b;stroke-width:3px;stroke-linejoin:round}
   .lbl .sub{font-size:10px;font-weight:600;opacity:.85}
@@ -98,8 +109,11 @@
     <button data-m="ALT">BY ALT<small>Owner at FL</small></button>
   </div>
   <div id="altBox"><input type="range" id="alt" min="100" max="450" step="10" value="330"><span id="altVal">FL330</span></div>
+  <div id="procBox"><select id="pApt"></select><select id="pName"></select></div>
   <div class="spacer"></div>
   <div class="tog">
+    <label><input type="checkbox" id="tSid"> <span style="color:#fb923c">SIDs</span></label>
+    <label><input type="checkbox" id="tStar"> <span style="color:#22d3ee">STARs</span></label>
     <label><input type="checkbox" id="tApt" checked> Airports</label>
     <label><input type="checkbox" id="tNb" checked> Neighbors</label>
     <label><input type="checkbox" id="tTrc" checked> TRACONs</label>
@@ -108,8 +122,8 @@
 </header>
 
 <div id="map"><svg id="svg">
-  <g id="world"><g id="gNb"></g><g id="gBnd"></g><g id="gSec"></g><g id="gAol"></g><g id="gTrc"></g></g>
-  <g id="gApt" class="apt"></g><g id="gLbl"></g>
+  <g id="world"><g id="gNb"></g><g id="gBnd"></g><g id="gSec"></g><g id="gAol"></g><g id="gTrc"></g><g id="gPr"></g></g>
+  <g id="gApt" class="apt"></g><g id="gLbl"></g><g id="gFx"></g>
 </svg></div>
 <div class="zoom"><button id="zin" title="Zoom in">+</button><button id="zout" title="Zoom out">−</button><button id="zfit" title="Fit">⤢</button></div>
 <div id="tip"></div>
@@ -122,7 +136,7 @@
 </aside>
 <footer id="foot"></footer>
 
-<script src="data.js?v=9c31f6fb"></script>
+<script src="data.js?v=2fb0179a"></script>
 <script>
 (() => {
 const D = window.ZID, SECS = D.sectors;
@@ -168,6 +182,7 @@ const tag = s => `${s.id} ${s.num}`;
 
 // ---------- render map
 let groups = [], nbs = [];
+const MAJOR = new Set(['KIND','KSDF','KCVG','KCMH','KDAY','KLEX','KEVV','KCRW','KHTS','KPKB','KHUF','KBWG','KTRI','KCKB','KLCK','KFFO','KLUK','KOSU','KMQJ','KTYQ','KUMP','KLOU','KLOZ','KCMI','KILN','KBMG','KTYS']);
 const NBFL = {LO:180,HI:280,IM:320,SH:380};
 const nbVisible = () => { const fl = st.mode==='ALT' ? st.fl : NBFL[st.mode]; return (D.neighbors||[]).filter(n=>n.floor<=fl && fl<=n.ceil); };
 const nbTag = n => `${n.fac} ${n.num}`;
@@ -213,6 +228,50 @@ function paint(){
   document.querySelectorAll('#gAol path').forEach(p=>p.setAttribute('stroke-opacity', st.area && st.area!=p.dataset.a ? .15 : 1));
 }
 
+// ---------- SID / STAR overlay
+const PROCS = D.procs||[], PROC_APTS = [...new Set(PROCS.map(p=>p.apt))].sort();
+const procOn = () => $('#tSid').checked || $('#tStar').checked;
+function procVisible(){
+  const a=$('#pApt').value, n=$('#pName').value;
+  return PROCS.filter(p=>(p.kind==='SID'?$('#tSid').checked:$('#tStar').checked) && (!a||p.apt===a) && (!n||p.apt+'|'+p.kind+'|'+p.name===n));
+}
+function procUI(){
+  $('#procBox').classList.toggle('on',procOn());
+  const a=$('#pApt').value, cur=$('#pName').value;
+  const list=PROCS.filter(p=>(p.kind==='SID'?$('#tSid').checked:$('#tStar').checked)&&(!a||p.apt===a));
+  $('#pName').innerHTML='<option value="">All procedures</option>'+list.map(p=>`<option value="${p.apt}|${p.kind}|${p.name}">${p.name} (${p.kind}${a?'':' '+p.apt.replace(/^K/,'')})</option>`).join('');
+  if([...$('#pName').options].some(o=>o.value===cur)) $('#pName').value=cur;
+}
+$('#pApt').innerHTML='<option value="">All airports</option>'+PROC_APTS.map(a=>`<option>${a}</option>`).join('');
+let prVis=[], prHov=null;
+function renderProcs(){
+  const g=$('#gPr'); g.innerHTML=''; prVis = procOn()? procVisible() : [];
+  prVis.forEach((p,i)=>{ const d=p.lines.map(l=>lineOf(l)).join('');
+    el('path',{d,class:'pr '+p.kind,'data-p':i},g);
+    const h=el('path',{d,class:'prh'},g);
+    h.addEventListener('pointerenter',e=>{ prHov=p; paintProcs(); tip.style.borderColor=p.kind==='SID'?'#fb923c':'#22d3ee';
+      tip.innerHTML=`<b>${p.name}</b><span style="color:${p.kind==='SID'?'#fb923c':'#22d3ee'}">${p.kind==='SID'?'Departure':'Arrival'} · ${p.apt}</span><i>${p.lines.length} transition${p.lines.length>1?'s':''} · ${Object.keys(p.fixes).length} fixes</i>`;
+      tip.style.display='block'; moveTip(e); });
+    h.addEventListener('pointermove',moveTip);
+    h.addEventListener('pointerleave',()=>{ prHov=null; paintProcs(); tip.style.display='none'; });
+    h.addEventListener('click',()=>{ if(moved) return; $('#pApt').value=p.apt; procUI(); $('#pName').value=p.apt+'|'+p.kind+'|'+p.name; renderProcs(); labels(); });
+  });
+  paintProcs();
+}
+function paintProcs(){ document.querySelectorAll('#gPr path.pr').forEach(e=>{ const p=prVis[e.dataset.p]; e.classList.toggle('hi',prHov===p); e.classList.toggle('dim',!!prHov&&prHov!==p); }); }
+function procLabels(){
+  const g=$('#gFx'); g.innerHTML=''; if(!prVis.length) return;
+  const zoomRel = st.k/(st.k0||st.k), single = prVis.length===1;
+  if(single || zoomRel>2.2){ const seen=new Set();
+    prVis.forEach(p=>{ for(const n in p.fixes){ if(seen.has(n)) continue; seen.add(n); const [x,y]=scr(P(p.fixes[n]));
+      el('path',{d:`M${x},${y-3.5}L${x+3},${y+2}L${x-3},${y+2}Z`,fill:'#a1a1aa'},g); if(single||zoomRel>3.2) el('text',{x:x+5,y:y+3,class:'fx'},g).textContent=n; } }); }
+  prVis.forEach(p=>{ const l=p.lines[0], c = p.kind==='STAR' ? l[0] : l[l.length-1]; const [x,y]=scr(P(c));
+    el('text',{x:x+6,y:y-6,class:'pn '+p.kind},g).textContent=p.name; });
+}
+['#tSid','#tStar'].forEach(i=>$(i).onchange=()=>{ procUI(); renderProcs(); labels(); });
+$('#pApt').onchange=()=>{ procUI(); $('#pName').value=''; renderProcs(); labels(); };
+$('#pName').onchange=()=>{ renderProcs(); labels(); };
+
 // ---------- labels & airports (screen space so they don't scale)
 function labels(){
   const gL=$('#gLbl'), gP=$('#gApt'); gL.innerHTML=''; gP.innerHTML='';
@@ -226,9 +285,13 @@ function labels(){
     g.forEach((s2,j)=>{ const ts=el('tspan',{x,dy:j?14:0},t); ts.textContent=tag(s2); });
     if (st.mode==='ALT' && st.k>1.3){ const ts=el('tspan',{x,dy:13,class:'sub'},t); ts.textContent=s.strat; }
   });
-  if ($('#tApt').checked) APTS.forEach(([n,la,lo])=>{
-    const [x,y]=scr(P([lo,la])); el('circle',{cx:x,cy:y,r:2.2},gP); el('text',{x:x+5,y:y-4},gP).textContent=n;
-  });
+  if ($('#tApt').checked){ const zr=st.k/(st.k0||st.k);
+    (D.airports||[]).forEach(a=>{ const major=MAJOR.has(a.id), [x,y]=scr(P(a.pos));
+      const c=el('circle',{cx:x,cy:y,r:major?2.6:1.8,opacity:major?1:.75},gP);
+      c.addEventListener('pointerenter',e=>{ tip.style.borderColor='#d4d4d8'; tip.innerHTML=`<b>${a.id}</b><span style="color:#d4d4d8">${a.name||''}</span><i>Elev ${a.elev} ft</i>`; tip.style.display='block'; moveTip(e); });
+      c.addEventListener('pointermove',moveTip); c.addEventListener('pointerleave',()=>tip.style.display='none');
+      if(major||zr>1.8) el('text',{x:x+5,y:y-4},gP).textContent=a.id.replace(/^K(?=[A-Z]{3}$)/,''); }); }
+  procLabels();
 }
 
 // ---------- pan / zoom
@@ -241,7 +304,7 @@ function fit(){
   const pts=[[Math.min(...lons)-nbPad,Math.min(...lats)-nbPad*.6],[Math.max(...lons)+nbPad,Math.max(...lats)+nbPad*.6]].map(P), xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]);
   const b=box(), w=Math.max(...xs)-Math.min(...xs), h=Math.max(...ys)-Math.min(...ys), pad=40;
   st.k = Math.min((b.width-2*pad)/w,(b.height-2*pad)/h);
-  st.tx = (b.width - w*st.k)/2 - Math.min(...xs)*st.k; st.ty=(b.height-h*st.k)/2 - Math.min(...ys)*st.k; apply();
+  st.k0 = st.k; st.tx = (b.width - w*st.k)/2 - Math.min(...xs)*st.k; st.ty=(b.height-h*st.k)/2 - Math.min(...ys)*st.k; apply();
 }
 function zoomAt(f,cx,cy){ const k=Math.max(.3,Math.min(40,st.k*f)); f=k/st.k; st.tx=cx-(cx-st.tx)*f; st.ty=cy-(cy-st.ty)*f; st.k=k; apply(); }
 svg.addEventListener('wheel',e=>{e.preventDefault(); const b=box(); zoomAt(Math.exp(-e.deltaY*0.0015),e.clientX-b.left,e.clientY-b.top);},{passive:false});
@@ -338,9 +401,9 @@ $('#search').oninput=e=>{ st.q=e.target.value; list(); };
 window.addEventListener('keydown',e=>{ if(e.target.tagName==='INPUT') return;
   const m={'1':'LO','2':'HI','3':'IM','4':'SH','5':'ALT'}[e.key]; if(m){ st.mode=m; render(); }
   if(e.key==='Escape'){ st.sel=null; detail(); paint(); list(); } });
-$('#foot').textContent = 'Sources: '+D.source+'. LO/HI boundaries from CRC ERAM Filter 1/11 maps; IM/SH footprints inferred from the HI sectors below them. Adjacent ARTCC sector stubs from eATS facility data (ZAU/ZOB/ZDC/ZTL/ZME/ZKC). Not for real-world navigation.';
+$('#foot').textContent = 'Sources: '+D.source+'. LO/HI boundaries from CRC ERAM Filter 1/11 maps; IM/SH footprints inferred from the HI sectors below them. Adjacent ARTCC sector stubs, SIDs/STARs and airports from eATS facility data. Not for real-world navigation.';
 
-render(); fit();
+procUI(); renderProcs(); render(); fit();
 })();
 </script>
 </body>
