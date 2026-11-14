@@ -117,7 +117,7 @@
 </aside>
 <footer id="foot"></footer>
 
-<script src="data.js?v=f3ddab24"></script>
+<script src="data.js?v=04c528ad"></script>
 <script>
 (() => {
 const D = window.ZID, SECS = D.sectors;
@@ -153,7 +153,7 @@ D.tracons.forEach(t => {
 function visible(){
   let secs = st.mode==='ALT' ? SECS.filter(s => s.floor<=st.fl && st.fl<=s.ceil) : SECS.filter(s => s.strat===st.mode);
   const groups = new Map();
-  secs.forEach(s => { const k = s.derived ? 'd'+s.derivedFrom.join('-') : 'n'+s.num;
+  secs.forEach(s => { const k = s.derived ? 'd'+s.derivedFrom.join('-')+(s.part||'') : 'n'+s.num;
     if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(s); });
   return [...groups.values()];
 }
@@ -286,7 +286,7 @@ function detail(){
    <tr><td>FPA(s)</td><td class="m">${s.fpa}</td></tr>
    ${s.strat!=='LO'&&stack.length>1?`<tr><td>Stack</td><td>${stack.map(x=>`<span style="${x===s?'color:#fff;font-weight:700':''}">${tag(x)} <span style="color:var(--muted)">${x.ceil>=999?x.floor+'+':x.floor+'–'+x.ceil}</span></span>`).join('<br>')}</td></tr>`:''}
   </table>
-  ${s.derived?`<div class="note">Lateral boundary inferred: CRC has no ${s.strat} sector map, so this footprint is drawn as the HI sector(s) beneath it (${under}) per SOP stack relationships.${s.num===80||s.num===89?' KNG 80 / IND 89 split the RSH footprint; their dividing line isn\'t in the data.':''}</div>`:''}`;
+  ${s.derived?`<div class="note">Lateral boundary inferred: CRC has no ${s.strat} sector map, so this footprint is drawn as the HI sector(s) beneath it (${under}) per SOP stack relationships.${s.splitNote?' '+s.splitNote:''}</div>`:''}`;
   d.querySelector('.x').onclick=()=>{st.sel=null;detail();paint();list();};
 }
 

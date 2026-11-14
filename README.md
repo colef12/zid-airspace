@@ -17,6 +17,6 @@ Colors are by Area of Specialization (1–7). Hover for ID/freq, click for full 
 - **Sector info** (name, ID, number, altitudes, freqs, FPAs, area): ZID Order 7210.1H (7/11/2024), Ch. 4–10. VHF freqs are from CRC where present (full 25 kHz precision).
 - **LO/HI boundaries**: CRC `ZID.json` ERAM video maps *Filter 1 – Low Sectors* / *Filter 11 – High Sectors*, polygonized. Labels cross-checked against every CRC event-split group (all pass).
 - **TRACONs** (IND, HUF, SDF, CVG, LEX, CMH, CRW, HTS): CRC TRACON boundary maps, reduced to outer outlines.
-- **IM/SH boundaries**: CRC has no IM/SH maps. Footprints are drawn as the HI sector(s) beneath them per SOP stack relationships, and are flagged as inferred in the UI. KNG 80 / IND 89 share the RSH 75 footprint; their dividing line isn't in the data.
+- **IM/SH boundaries**: CRC has no IM/SH maps. Footprints are drawn as the HI sector(s) beneath them per SOP stack relationships, and are flagged as inferred in the UI. KNG 80 / IND 89 split the RSH 75 footprint along the SOP Appendix G line (N40°00' W087°16'07" – N39°00' W086°30').
 
 Not for real-world navigation.
