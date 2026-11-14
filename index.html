@@ -136,7 +136,7 @@
 </aside>
 <footer id="foot"></footer>
 
-<script src="data.js?v=2fb0179a"></script>
+<script src="data.js?v=15f04770"></script>
 <script>
 (() => {
 const D = window.ZID, SECS = D.sectors;
@@ -229,17 +229,17 @@ function paint(){
 }
 
 // ---------- SID / STAR overlay
-const PROCS = D.procs||[], PROC_APTS = [...new Set(PROCS.map(p=>p.apt))].sort();
+const PROCS = D.procs||[], PROC_APTS = [...new Set(PROCS.flatMap(p=>p.apts||[p.apt]))].sort();
 const procOn = () => $('#tSid').checked || $('#tStar').checked;
 function procVisible(){
   const a=$('#pApt').value, n=$('#pName').value;
-  return PROCS.filter(p=>(p.kind==='SID'?$('#tSid').checked:$('#tStar').checked) && (!a||p.apt===a) && (!n||p.apt+'|'+p.kind+'|'+p.name===n));
+  return PROCS.filter(p=>(p.kind==='SID'?$('#tSid').checked:$('#tStar').checked) && (!a||(p.apts||[p.apt]).includes(a)) && (!n||p.kind+'|'+p.name===n));
 }
 function procUI(){
   $('#procBox').classList.toggle('on',procOn());
   const a=$('#pApt').value, cur=$('#pName').value;
-  const list=PROCS.filter(p=>(p.kind==='SID'?$('#tSid').checked:$('#tStar').checked)&&(!a||p.apt===a));
-  $('#pName').innerHTML='<option value="">All procedures</option>'+list.map(p=>`<option value="${p.apt}|${p.kind}|${p.name}">${p.name} (${p.kind}${a?'':' '+p.apt.replace(/^K/,'')})</option>`).join('');
+  const list=PROCS.filter(p=>(p.kind==='SID'?$('#tSid').checked:$('#tStar').checked)&&(!a||(p.apts||[p.apt]).includes(a)));
+  $('#pName').innerHTML='<option value="">All procedures</option>'+list.map(p=>`<option value="${p.kind}|${p.name}">${p.name} (${p.kind}${a?'':' '+p.apt.replace(/\bK(?=[A-Z]{3}\b)/g,'')})</option>`).join('');
   if([...$('#pName').options].some(o=>o.value===cur)) $('#pName').value=cur;
 }
 $('#pApt').innerHTML='<option value="">All airports</option>'+PROC_APTS.map(a=>`<option>${a}</option>`).join('');
@@ -254,7 +254,7 @@ function renderProcs(){
       tip.style.display='block'; moveTip(e); });
     h.addEventListener('pointermove',moveTip);
     h.addEventListener('pointerleave',()=>{ prHov=null; paintProcs(); tip.style.display='none'; });
-    h.addEventListener('click',()=>{ if(moved) return; $('#pApt').value=p.apt; procUI(); $('#pName').value=p.apt+'|'+p.kind+'|'+p.name; renderProcs(); labels(); });
+    h.addEventListener('click',()=>{ if(moved) return; $('#pApt').value=''; procUI(); $('#pName').value=p.kind+'|'+p.name; renderProcs(); labels(); });
   });
   paintProcs();
 }
@@ -401,7 +401,7 @@ $('#search').oninput=e=>{ st.q=e.target.value; list(); };
 window.addEventListener('keydown',e=>{ if(e.target.tagName==='INPUT') return;
   const m={'1':'LO','2':'HI','3':'IM','4':'SH','5':'ALT'}[e.key]; if(m){ st.mode=m; render(); }
   if(e.key==='Escape'){ st.sel=null; detail(); paint(); list(); } });
-$('#foot').textContent = 'Sources: '+D.source+'. LO/HI boundaries from CRC ERAM Filter 1/11 maps; IM/SH footprints inferred from the HI sectors below them. Adjacent ARTCC sector stubs, SIDs/STARs and airports from eATS facility data. Not for real-world navigation.';
+$('#foot').textContent = 'Sources: '+D.source+'. LO/HI boundaries from CRC ERAM Filter 1/11 maps; IM/SH footprints inferred from the HI sectors below them. Adjacent ARTCC sector stubs, SIDs/STARs from CRC NavData (common route + enroute transitions; runway legs omitted); airports from eATS. Not for real-world navigation.';
 
 procUI(); renderProcs(); render(); fit();
 })();
