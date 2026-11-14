@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZID Airspace — Indianapolis ARTCC Sectors</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M4 8 14 4l14 6-2 16-12 3-10-8z' fill='%237c4dff'/></svg>">
+<style>
+  :root{
+    --bg:#18181b; --panel:#1f1f23; --panel2:#26262b; --line:#33333a; --text:#e4e4e7; --muted:#8b8b94;
+    --a1:#8b5cf6; --a2:#f59e0b; --a3:#10b981; --a4:#ef4444; --a5:#3b82f6; --a6:#ec4899; --a7:#a3e635;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:13px/1.4 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+  header{position:absolute;top:0;left:0;right:0;height:56px;display:flex;align-items:center;gap:16px;padding:0 16px;border-bottom:1px solid var(--line);background:rgba(24,24,27,.92);backdrop-filter:blur(6px);z-index:5}
+  header h1{font-size:15px;margin:0;font-weight:700;letter-spacing:.2px;white-space:nowrap}
+  header h1 span{color:var(--muted);font-weight:500}
+  .seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:3px;gap:2px}
+  .seg button{background:none;border:0;color:var(--muted);font:600 12px/1 inherit;padding:8px 12px;border-radius:6px;cursor:pointer;white-space:nowrap}
+  .seg button small{display:block;font-weight:500;font-size:10px;margin-top:3px;opacity:.75}
+  .seg button.on{background:#3f3f46;color:#fff}
+  .seg button:hover:not(.on){color:var(--text)}
+  #altBox{display:none;align-items:center;gap:10px}
+  #altBox.on{display:flex}
+  #alt{width:180px;accent-color:#a78bfa}
+  #altVal{font:700 13px ui-monospace,Menlo,monospace;min-width:52px}
+  .spacer{flex:1}
+  .tog{display:flex;gap:12px;color:var(--muted);font-size:12px}
+  .tog label{display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap}
+  #map{position:absolute;top:56px;left:0;right:340px;bottom:0;cursor:grab;touch-action:none}
+  #map.drag{cursor:grabbing}
+  svg{width:100%;height:100%;display:block}
+  .sec{stroke-width:1;vector-effect:non-scaling-stroke;cursor:pointer;transition:fill-opacity .12s}
+  .aol{fill:none;stroke-width:2.5;vector-effect:non-scaling-stroke;pointer-events:none}
+  .bnd{fill:none;stroke:#52525b;stroke-width:1.5;stroke-dasharray:6 4;vector-effect:non-scaling-stroke;pointer-events:none}
+  .trc{fill:none;stroke:#a1a1aa;stroke-width:1;stroke-dasharray:2 3;vector-effect:non-scaling-stroke;pointer-events:none;opacity:.7}
+  .lbl{font:700 12px ui-sans-serif,system-ui,sans-serif;text-anchor:middle;dominant-baseline:middle;pointer-events:none;paint-order:stroke;stroke:#18181b;stroke-width:3px;stroke-linejoin:round}
+  .lbl .sub{font-size:10px;font-weight:600;opacity:.85}
+  .apt circle{fill:#d4d4d8}
+  .apt text{font:600 10px ui-monospace,Menlo,monospace;fill:#a1a1aa;paint-order:stroke;stroke:#18181b;stroke-width:3px}
+  .trl{font:600 10px ui-monospace,Menlo,monospace;fill:#a1a1aa;text-anchor:middle;paint-order:stroke;stroke:#18181b;stroke-width:3px}
+  #tip{position:absolute;pointer-events:none;background:#18181b;border:1.5px solid;border-radius:8px;padding:6px 10px;display:none;z-index:9;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+  #tip b{display:block;font-size:14px;color:#fff}
+  #tip span{font:12px ui-monospace,Menlo,monospace}
+  #tip i{display:block;font-style:normal;font-size:10px;color:var(--muted);margin-top:2px}
+  aside{position:absolute;top:56px;right:0;bottom:0;width:340px;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;z-index:4}
+  .legend{padding:12px 14px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .chip{display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;cursor:pointer;font-weight:600;font-size:12px;user-select:none}
+  .chip i{width:10px;height:10px;border-radius:3px;flex:none}
+  .chip.dim{opacity:.35}
+  .chip.all{grid-column:span 1;justify-content:center;color:var(--muted)}
+  #detail{padding:14px;border-bottom:1px solid var(--line);display:none}
+  #detail.on{display:block}
+  #detail h2{margin:0 0 2px;font-size:18px}
+  #detail .st{font-size:12px;color:var(--muted);margin-bottom:10px}
+  #detail table{width:100%;border-collapse:collapse;font-size:12px}
+  #detail td{padding:4px 0;border-bottom:1px solid #2a2a30;vertical-align:top}
+  #detail td:first-child{color:var(--muted);width:105px}
+  #detail td.m{font-family:ui-monospace,Menlo,monospace}
+  .note{margin-top:10px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:6px;padding:6px 8px}
+  .x{float:right;background:none;border:0;color:var(--muted);font-size:18px;cursor:pointer;line-height:1}
+  #search{margin:10px 14px 6px;padding:8px 10px;border-radius:6px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit}
+  #list{overflow:auto;flex:1;padding:0 6px 12px}
+  .grp{margin-top:8px}
+  .grp h3{margin:6px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .grp h3 i{width:8px;height:8px;border-radius:2px}
+  .row{display:grid;grid-template-columns:62px 1fr auto;gap:8px;align-items:center;padding:6px 8px;border-radius:6px;cursor:pointer}
+  .row:hover,.row.sel{background:var(--panel2)}
+  .row b{font-size:12px}
+  .row .n{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .f{font:12px ui-monospace,Menlo,monospace}
+  .row .alt{grid-column:2/4;font-size:10.5px;color:var(--muted);margin-top:-4px}
+  footer{position:absolute;left:12px;bottom:10px;font-size:10.5px;color:#71717a;z-index:3;max-width:calc(100% - 380px)}
+  .zoom{position:absolute;left:12px;top:68px;display:flex;flex-direction:column;gap:4px;z-index:3}
+  .zoom button{width:30px;height:30px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:16px;cursor:pointer}
+  @media (max-width:900px){
+    header{height:auto;flex-wrap:wrap;padding:8px 10px;gap:8px}
+    header h1 span,.tog{display:none}
+    #map{top:96px;right:0;bottom:42vh}
+    aside{top:auto;height:42vh;width:100%;border-left:0;border-top:1px solid var(--line)}
+    footer{display:none}
+    .zoom{top:106px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>ZID <span>· Indianapolis ARTCC</span></h1>
+  <div class="seg" id="modes">
+    <button data-m="LO">LOW<small>≤ FL230</small></button>
+    <button data-m="HI">HIGH<small>FL240+</small></button>
+    <button data-m="IM">IM<small>Intermediate</small></button>
+    <button data-m="SH">SUPER HI<small>FL340+</small></button>
+    <button data-m="ALT">BY ALT<small>Owner at FL</small></button>
+  </div>
+  <div id="altBox"><input type="range" id="alt" min="100" max="450" step="10" value="330"><span id="altVal">FL330</span></div>
+  <div class="spacer"></div>
+  <div class="tog">
+    <label><input type="checkbox" id="tApt" checked> Airports</label>
+    <label><input type="checkbox" id="tTrc"> TRACONs</label>
+    <label><input type="checkbox" id="tLbl" checked> Labels</label>
+  </div>
+</header>
+
+<div id="map"><svg id="svg">
+  <g id="world"><g id="gBnd"></g><g id="gSec"></g><g id="gAol"></g><g id="gTrc"></g></g>
+  <g id="gApt" class="apt"></g><g id="gLbl"></g>
+</svg></div>
+<div class="zoom"><button id="zin" title="Zoom in">+</button><button id="zout" title="Zoom out">−</button><button id="zfit" title="Fit">⤢</button></div>
+<div id="tip"></div>
+
+<aside>
+  <div class="legend" id="legend"></div>
+  <div id="detail"></div>
+  <input id="search" placeholder="Search sector, ID, number, freq…">
+  <div id="list"></div>
+</aside>
+<footer id="foot"></footer>
+
+<script src="data.js"></script>
+<script>
+(() => {
+const D = window.ZID, SECS = D.sectors;
+const AREA_COL = {1:'#8b5cf6',2:'#f59e0b',3:'#10b981',4:'#ef4444',5:'#3b82f6',6:'#ec4899',7:'#a3e635'};
+const STRAT_NAME = {LO:'Low',HI:'High',IM:'Intermediate',SH:'Super High'};
+const APTS = [['IND',39.717,-86.294],['SDF',38.174,-85.736],['CVG',39.049,-84.668],['CMH',39.998,-82.892],['DAY',39.902,-84.219],
+  ['LEX',38.037,-84.606],['EVV',38.037,-87.532],['CRW',38.373,-81.593],['HTS',38.367,-82.558],['PKB',39.345,-81.439],
+  ['HUF',39.452,-87.308],['BWG',36.964,-86.420],['TRI',36.475,-82.408],['CKB',39.296,-80.228],['LCK',39.814,-82.928],['FFO',39.826,-84.048]];
+
+// ---------- projection
+const LAT0 = 38.6, CX = Math.cos(LAT0*Math.PI/180), S = 100;
+const P = ([lon,lat]) => [lon*CX*S, -lat*S];
+const pathOf = rings => rings.map(r => 'M'+r.map(c => P(c).map(v=>v.toFixed(2)).join(',')).join('L')+'Z').join('');
+const lineOf = l => 'M'+l.map(c => P(c).map(v=>v.toFixed(2)).join(',')).join('L');
+
+const $ = s => document.querySelector(s), svg = $('#svg'), world = $('#world');
+const NS = 'http://www.w3.org/2000/svg';
+const el = (t,a={},p) => { const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); if(p) p.appendChild(e); return e; };
+
+// ---------- state
+const st = { mode:'LO', fl:330, area:null, sel:null, q:'', k:1, tx:0, ty:0 };
+const hm = location.hash.slice(1).split('/');
+if (['LO','HI','IM','SH','ALT'].includes((hm[0]||'').toUpperCase())) st.mode = hm[0].toUpperCase();
+if (hm[1] && +hm[1]) st.fl = +hm[1];
+
+// boundary + tracons (static)
+D.boundary.forEach(r => el('path',{d:pathOf([r]),class:'bnd'},$('#gBnd')));
+D.tracons.forEach(t => {
+  t.lines.filter(l => l.length>1).forEach(l => el('path',{d:lineOf(l),class:'trc'},$('#gTrc')));
+});
+
+// ---------- visible sectors (grouped when sharing a footprint)
+function visible(){
+  let secs = st.mode==='ALT' ? SECS.filter(s => s.floor<=st.fl && st.fl<=s.ceil) : SECS.filter(s => s.strat===st.mode);
+  const groups = new Map();
+  secs.forEach(s => { const k = s.derived ? 'd'+s.derivedFrom.join('-') : 'n'+s.num;
+    if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(s); });
+  return [...groups.values()];
+}
+const altKey = () => SECS.filter(s => s.floor<=st.fl && st.fl<=s.ceil).map(s=>s.num).sort((a,b)=>a-b).join(',');
+const fmtAlt = s => s.floor===0 ? `FL${s.ceil} & below` : s.ceil>=999 ? `FL${s.floor} & above` : `FL${s.floor}–FL${s.ceil}`;
+const tag = s => `${s.id} ${s.num}`;
+
+// ---------- render map
+let groups = [];
+function render(){
+  const gS=$('#gSec'), gA=$('#gAol'); gS.innerHTML=''; gA.innerHTML='';
+  groups = visible();
+  groups.forEach((g,i) => {
+    const s=g[0], c=AREA_COL[s.area];
+    const p = el('path',{d:pathOf(s.poly),class:'sec',fill:c,stroke:c,'stroke-opacity':.55,'data-i':i},gS);
+    p.addEventListener('pointerenter',e=>hover(g,e)); p.addEventListener('pointermove',moveTip);
+    p.addEventListener('pointerleave',()=>{tip.style.display='none'; paint();});
+    p.addEventListener('click',e=>{ if(!moved) select(g.length>1&&st.sel&&g.includes(st.sel)?g[(g.indexOf(st.sel)+1)%g.length]:g[0]); });
+  });
+  const ol = st.mode==='ALT' ? D.altOutlines[altKey()] : D.outlines[st.mode];
+  for (const a in ol) el('path',{d:pathOf(ol[a]),class:'aol',stroke:AREA_COL[a],'data-a':a},gA);
+  paint(); labels(); list();
+  document.querySelectorAll('#modes button').forEach(b=>b.classList.toggle('on',b.dataset.m===st.mode));
+  $('#altBox').classList.toggle('on',st.mode==='ALT');
+  $('#alt').value=st.fl; $('#altVal').textContent='FL'+String(st.fl).padStart(3,'0');
+  history.replaceState(null,'','#'+st.mode.toLowerCase()+(st.mode==='ALT'?'/'+st.fl:''));
+}
+let hov=null;
+function paint(){
+  document.querySelectorAll('#gSec path').forEach(p=>{
+    const g=groups[p.dataset.i], a=g[0].area, isSel=st.sel&&g.includes(st.sel), isH=hov===g;
+    const dim = st.area && st.area!==a;
+    p.setAttribute('fill-opacity', isSel?.55 : isH?.42 : dim?.06 : .22);
+    p.setAttribute('stroke-opacity', dim?.15:.55);
+    p.style.strokeWidth = isSel?2.5:1;
+    if(isSel) p.parentNode.appendChild(p);
+  });
+  document.querySelectorAll('#gAol path').forEach(p=>p.setAttribute('stroke-opacity', st.area && st.area!=p.dataset.a ? .15 : 1));
+}
+
+// ---------- labels & airports (screen space so they don't scale)
+function labels(){
+  const gL=$('#gLbl'), gP=$('#gApt'); gL.innerHTML=''; gP.innerHTML='';
+  if ($('#tLbl').checked) groups.forEach(g=>{
+    const s=g[0], [x,y]=scr(P(s.label)), c=AREA_COL[s.area];
+    const t=el('text',{x,y:y-(g.length-1)*7,class:'lbl',fill:c,opacity:st.area&&st.area!==s.area?.25:1},gL);
+    g.forEach((s2,j)=>{ const ts=el('tspan',{x,dy:j?14:0},t); ts.textContent=tag(s2); });
+    if (st.mode==='ALT' && st.k>1.3){ const ts=el('tspan',{x,dy:13,class:'sub'},t); ts.textContent=s.strat; }
+  });
+  if ($('#tTrc').checked) D.tracons.forEach(t=>{
+    let xs=0,ys=0,n=0; t.lines.forEach(l=>l.forEach(c=>{xs+=c[0];ys+=c[1];n++;}));
+    const [x,y]=scr(P([xs/n,ys/n])); el('text',{x,y,class:'trl'},gL).textContent=t.name+' APP';
+  });
+  if ($('#tApt').checked) APTS.forEach(([n,la,lo])=>{
+    const [x,y]=scr(P([lo,la])); el('circle',{cx:x,cy:y,r:2.2},gP); el('text',{x:x+5,y:y-4},gP).textContent=n;
+  });
+}
+
+// ---------- pan / zoom
+const box = () => svg.getBoundingClientRect();
+const scr = ([x,y]) => [x*st.k+st.tx, y*st.k+st.ty];
+function apply(){ world.setAttribute('transform',`translate(${st.tx},${st.ty}) scale(${st.k})`); labels(); }
+function fit(){
+  const pts = D.boundary.flat().map(P), xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]);
+  const b=box(), w=Math.max(...xs)-Math.min(...xs), h=Math.max(...ys)-Math.min(...ys), pad=40;
+  st.k = Math.min((b.width-2*pad)/w,(b.height-2*pad)/h);
+  st.tx = (b.width - w*st.k)/2 - Math.min(...xs)*st.k; st.ty=(b.height-h*st.k)/2 - Math.min(...ys)*st.k; apply();
+}
+function zoomAt(f,cx,cy){ const k=Math.max(.3,Math.min(40,st.k*f)); f=k/st.k; st.tx=cx-(cx-st.tx)*f; st.ty=cy-(cy-st.ty)*f; st.k=k; apply(); }
+svg.addEventListener('wheel',e=>{e.preventDefault(); const b=box(); zoomAt(Math.exp(-e.deltaY*0.0015),e.clientX-b.left,e.clientY-b.top);},{passive:false});
+let drag=null, moved=false; const pts=new Map();
+svg.addEventListener('pointerdown',e=>{ pts.set(e.pointerId,[e.clientX,e.clientY]); drag={x:e.clientX,y:e.clientY,tx:st.tx,ty:st.ty,d:pinch()}; moved=false; });
+function pinch(){ if(pts.size<2) return 0; const [a,b]=[...pts.values()]; return Math.hypot(a[0]-b[0],a[1]-b[1]); }
+window.addEventListener('pointermove',e=>{
+  if(!drag) return; if(pts.has(e.pointerId)) pts.set(e.pointerId,[e.clientX,e.clientY]);
+  if(pts.size===2){ const d=pinch(), [a,b]=[...pts.values()], bb=box(); if(drag.d) zoomAt(d/drag.d,(a[0]+b[0])/2-bb.left,(a[1]+b[1])/2-bb.top); drag.d=d; moved=true; return; }
+  const dx=e.clientX-drag.x, dy=e.clientY-drag.y; if(Math.abs(dx)+Math.abs(dy)>3){ moved=true; $('#map').classList.add('drag'); tip.style.display='none'; }
+  if(moved){ st.tx=drag.tx+dx; st.ty=drag.ty+dy; apply(); }
+});
+window.addEventListener('pointerup',e=>{ pts.delete(e.pointerId); if(!pts.size){ drag=null; $('#map').classList.remove('drag'); setTimeout(()=>moved=false,0);} });
+svg.addEventListener('click',e=>{ if(!moved && e.target===svg){ st.sel=null; detail(); paint(); list(); } });
+$('#zin').onclick=()=>{const b=box(); zoomAt(1.4,b.width/2,b.height/2)}; $('#zout').onclick=()=>{const b=box(); zoomAt(1/1.4,b.width/2,b.height/2)}; $('#zfit').onclick=fit;
+window.addEventListener('resize',fit);
+
+// ---------- tooltip
+const tip=$('#tip');
+function hover(g,e){ if(drag&&moved) return; hov=g; paint(); const c=AREA_COL[g[0].area];
+  tip.style.borderColor=c; tip.innerHTML=g.map(s=>`<b>${tag(s)}</b><span style="color:${c}">${s.vhf}</span>`).join('<div style="height:4px"></div>')+`<i>Area ${g[0].area} · ${g.length>1?fmtAlt(g[0]):fmtAlt(g[0])}</i>`;
+  tip.style.display='block'; moveTip(e); }
+function moveTip(e){ tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY+14)+'px'; }
+svg.addEventListener('pointerleave',()=>{hov=null;});
+
+// ---------- side panel
+const leg=$('#legend');
+for(let a=1;a<=7;a++){ const c=document.createElement('div'); c.className='chip'; c.dataset.a=a;
+  c.innerHTML=`<i style="background:${AREA_COL[a]}"></i>Area ${a}`; c.onclick=()=>{ st.area=st.area===a?null:a; legendUI(); paint(); labels(); list(); }; leg.appendChild(c); }
+const all=document.createElement('div'); all.className='chip all'; all.textContent='All'; all.onclick=()=>{st.area=null;legendUI();paint();labels();list();}; leg.appendChild(all);
+function legendUI(){ leg.querySelectorAll('.chip[data-a]').forEach(c=>c.classList.toggle('dim',!!st.area&&+c.dataset.a!==st.area)); }
+
+function list(){
+  const L=$('#list'); L.innerHTML='';
+  const q=st.q.trim().toLowerCase();
+  const inView=new Set(groups.flat().map(s=>s.num));
+  const secs = q ? SECS.filter(s=>[s.name,s.id,String(s.num),s.vhf,s.callsign,'area '+s.area].some(v=>v.toLowerCase().includes(q)))
+                 : SECS.filter(s=>inView.has(s.num));
+  for(let a=1;a<=7;a++){
+    if(st.area && st.area!==a && !q) continue;
+    const ss=secs.filter(s=>s.area===a).sort((x,y)=>x.floor-y.floor||x.num-y.num); if(!ss.length) continue;
+    const g=document.createElement('div'); g.className='grp';
+    g.innerHTML=`<h3><i style="background:${AREA_COL[a]}"></i>Area ${a}</h3>`;
+    ss.forEach(s=>{ const r=document.createElement('div'); r.className='row'+(st.sel===s?' sel':'');
+      r.innerHTML=`<b style="color:${AREA_COL[a]}">${tag(s)}</b><span class="n">${s.name}${q?' · '+s.strat:''}</span><span class="f">${s.vhf}</span><span class="alt">${STRAT_NAME[s.strat]} · ${fmtAlt(s)}</span>`;
+      r.onclick=()=>select(s,true); g.appendChild(r); });
+    L.appendChild(g);
+  }
+  if(!L.children.length) L.innerHTML='<div style="padding:14px;color:var(--muted)">No sectors.</div>';
+}
+function select(s,fromList){
+  if(fromList && !groups.flat().includes(s)){ st.mode=s.strat; render(); }
+  st.sel=s; detail(); paint(); list();
+}
+function detail(){
+  const d=$('#detail'), s=st.sel; if(!s){ d.className=''; d.innerHTML=''; return; }
+  const c=AREA_COL[s.area], under=s.derivedFrom.map(n=>SECS.find(x=>x.num===n)).map(tag).join(' + ');
+  const stack=SECS.filter(x=>x.strat!=='LO' && (x.derived?x.derivedFrom:[x.num]).some(n=>(s.derived?s.derivedFrom:[s.num]).includes(n))).sort((a,b)=>a.floor-b.floor);
+  d.className='on';
+  d.innerHTML=`<button class="x" title="Close">×</button><h2 style="color:${c}">${tag(s)}</h2>
+  <div class="st">${s.name.toUpperCase()} ${s.strat} · Area ${s.area}</div>
+  <table>
+   <tr><td>Altitudes</td><td>${fmtAlt(s)}</td></tr>
+   <tr><td>VHF</td><td class="m">${s.vhf}</td></tr>
+   <tr><td>UHF</td><td class="m">${s.uhf}</td></tr>
+   <tr><td>Callsign</td><td class="m">${s.callsign}</td></tr>
+   <tr><td>FPA(s)</td><td class="m">${s.fpa}</td></tr>
+   ${s.strat!=='LO'&&stack.length>1?`<tr><td>Stack</td><td>${stack.map(x=>`<span style="${x===s?'color:#fff;font-weight:700':''}">${tag(x)} <span style="color:var(--muted)">${x.ceil>=999?x.floor+'+':x.floor+'–'+x.ceil}</span></span>`).join('<br>')}</td></tr>`:''}
+  </table>
+  ${s.derived?`<div class="note">Lateral boundary inferred: CRC has no ${s.strat} sector map, so this footprint is drawn as the HI sector(s) beneath it (${under}) per SOP stack relationships.${s.num===80||s.num===89?' KNG 80 / IND 89 split the RSH footprint; their dividing line isn\'t in the data.':''}</div>`:''}`;
+  d.querySelector('.x').onclick=()=>{st.sel=null;detail();paint();list();};
+}
+
+// ---------- controls
+document.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>{ st.mode=b.dataset.m; render(); });
+$('#alt').oninput=e=>{ st.fl=+e.target.value; render(); };
+['#tApt','#tTrc','#tLbl'].forEach(i=>$(i).onchange=()=>{ $('#gTrc').style.display=$('#tTrc').checked?'':'none'; labels(); });
+$('#gTrc').style.display='none';
+$('#search').oninput=e=>{ st.q=e.target.value; list(); };
+window.addEventListener('keydown',e=>{ if(e.target.tagName==='INPUT') return;
+  const m={'1':'LO','2':'HI','3':'IM','4':'SH','5':'ALT'}[e.key]; if(m){ st.mode=m; render(); }
+  if(e.key==='Escape'){ st.sel=null; detail(); paint(); list(); } });
+$('#foot').textContent = 'Sources: '+D.source+'. LO/HI boundaries from CRC ERAM Filter 1/11 maps; IM/SH footprints inferred from the HI sectors below them. Not for real-world navigation.';
+
+render(); fit();
+})();
+</script>
+</body>
+</html>
