@@ -33,6 +33,9 @@
   .sec{stroke-width:1;vector-effect:non-scaling-stroke;cursor:pointer;transition:fill-opacity .12s}
   .aol{fill:none;stroke-width:2.5;vector-effect:non-scaling-stroke;pointer-events:none}
   .bnd{fill:none;stroke:#52525b;stroke-width:1.5;stroke-dasharray:6 4;vector-effect:non-scaling-stroke;pointer-events:none}
+  .nb{stroke:#a1a1aa;stroke-width:1;vector-effect:non-scaling-stroke;cursor:pointer;fill:#a1a1aa;transition:fill-opacity .12s}
+  .nbl{font:700 11px ui-sans-serif,system-ui,sans-serif;text-anchor:middle;dominant-baseline:middle;pointer-events:none;fill:#a1a1aa;paint-order:stroke;stroke:#18181b;stroke-width:3px;stroke-linejoin:round}
+  .nbl .sub{font-size:9.5px;font-weight:500;fill:#8b8b94}
   .trc{fill:none;stroke:#a1a1aa;stroke-width:1.25;vector-effect:non-scaling-stroke;pointer-events:none;opacity:.85}
   .lbl{font:700 12px ui-sans-serif,system-ui,sans-serif;text-anchor:middle;dominant-baseline:middle;pointer-events:none;paint-order:stroke;stroke:#18181b;stroke-width:3px;stroke-linejoin:round}
   .lbl .sub{font-size:10px;font-weight:600;opacity:.85}
@@ -97,13 +100,14 @@
   <div class="spacer"></div>
   <div class="tog">
     <label><input type="checkbox" id="tApt" checked> Airports</label>
+    <label><input type="checkbox" id="tNb" checked> Neighbors</label>
     <label><input type="checkbox" id="tTrc" checked> TRACONs</label>
     <label><input type="checkbox" id="tLbl" checked> Labels</label>
   </div>
 </header>
 
 <div id="map"><svg id="svg">
-  <g id="world"><g id="gBnd"></g><g id="gSec"></g><g id="gAol"></g><g id="gTrc"></g></g>
+  <g id="world"><g id="gNb"></g><g id="gBnd"></g><g id="gSec"></g><g id="gAol"></g><g id="gTrc"></g></g>
   <g id="gApt" class="apt"></g><g id="gLbl"></g>
 </svg></div>
 <div class="zoom"><button id="zin" title="Zoom in">+</button><button id="zout" title="Zoom out">−</button><button id="zfit" title="Fit">⤢</button></div>
@@ -117,7 +121,7 @@
 </aside>
 <footer id="foot"></footer>
 
-<script src="data.js?v=04c528ad"></script>
+<script src="data.js?v=c00fa746"></script>
 <script>
 (() => {
 const D = window.ZID, SECS = D.sectors;
@@ -162,7 +166,14 @@ const fmtAlt = s => s.floor===0 ? `FL${s.ceil} & below` : s.ceil>=999 ? `FL${s.f
 const tag = s => `${s.id} ${s.num}`;
 
 // ---------- render map
-let groups = [];
+let groups = [], nbs = [];
+const NBFL = {LO:100,HI:280,IM:320,SH:380};
+const nbVisible = () => { const fl = st.mode==='ALT' ? st.fl : NBFL[st.mode]; return (D.neighbors||[]).filter(n=>n.floor<=fl && fl<=n.ceil); };
+const nbTag = n => `${n.fac} ${n.num}`;
+const fmtNbAlt = n => n.floor===0 ? `SFC–FL${n.ceil}` : n.ceil>=999 ? `FL${n.floor} & above` : `FL${n.floor}–FL${n.ceil}`;
+function nbHover(n,e,p){ if(drag&&moved) return; p.setAttribute('fill-opacity',.22);
+  tip.style.borderColor='#a1a1aa'; tip.innerHTML=`<b>${nbTag(n)}</b><span style="color:#d4d4d8">${n.vhf}</span><i>${n.name} · ${fmtNbAlt(n)}</i>`;
+  tip.style.display='block'; moveTip(e); }
 function render(){
   const gS=$('#gSec'), gA=$('#gAol'); gS.innerHTML=''; gA.innerHTML='';
   groups = visible();
@@ -173,6 +184,11 @@ function render(){
     p.addEventListener('pointerleave',()=>{tip.style.display='none'; paint();});
     p.addEventListener('click',e=>{ if(!moved) select(g.length>1&&st.sel&&g.includes(st.sel)?g[(g.indexOf(st.sel)+1)%g.length]:g[0]); });
   });
+  const gN=$('#gNb'); gN.innerHTML=''; nbs = $('#tNb').checked ? nbVisible() : [];
+  nbs.forEach((n,i)=>{ const p=el('path',{d:pathOf(n.poly),class:'nb','fill-opacity':.06,'stroke-opacity':.6,'data-n':i},gN);
+    p.addEventListener('pointerenter',e=>nbHover(n,e,p)); p.addEventListener('pointermove',moveTip);
+    p.addEventListener('pointerleave',()=>{tip.style.display='none'; p.setAttribute('fill-opacity', st.sel===n?.3:.06);});
+    p.addEventListener('click',()=>{ if(!moved) select(n); }); });
   const ol = st.mode==='ALT' ? D.altOutlines[altKey()] : D.outlines[st.mode];
   for (const a in ol) el('path',{d:pathOf(ol[a]),class:'aol',stroke:AREA_COL[a],'data-a':a},gA);
   paint(); labels(); list();
@@ -191,12 +207,17 @@ function paint(){
     p.style.strokeWidth = isSel?2.5:1;
     if(isSel) p.parentNode.appendChild(p);
   });
+  document.querySelectorAll('#gNb path').forEach(p=>{ const n=nbs[p.dataset.n]; p.setAttribute('fill-opacity', st.sel===n?.3:.06); p.style.strokeWidth=st.sel===n?2.5:1; });
   document.querySelectorAll('#gAol path').forEach(p=>p.setAttribute('stroke-opacity', st.area && st.area!=p.dataset.a ? .15 : 1));
 }
 
 // ---------- labels & airports (screen space so they don't scale)
 function labels(){
   const gL=$('#gLbl'), gP=$('#gApt'); gL.innerHTML=''; gP.innerHTML='';
+  if ($('#tLbl').checked) nbs.forEach(n=>{
+    const [x,y]=scr(P(n.label)); const t=el('text',{x,y:y-6,class:'nbl'},gL);
+    el('tspan',{x},t).textContent=nbTag(n); if(st.k>0.9){ el('tspan',{x,dy:12,class:'sub'},t).textContent=n.name; }
+  });
   if ($('#tLbl').checked) groups.forEach(g=>{
     const s=g[0], [x,y]=scr(P(s.label)), c=AREA_COL[s.area];
     const t=el('text',{x,y:y-(g.length-1)*7,class:'lbl',fill:c,opacity:st.area&&st.area!==s.area?.25:1},gL);
@@ -213,7 +234,9 @@ const box = () => svg.getBoundingClientRect();
 const scr = ([x,y]) => [x*st.k+st.tx, y*st.k+st.ty];
 function apply(){ world.setAttribute('transform',`translate(${st.tx},${st.ty}) scale(${st.k})`); labels(); }
 function fit(){
-  const pts = D.boundary.flat().map(P), xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]);
+  const nbPad = $("#tNb").checked ? 0.7 : 0, bb = D.boundary.flat();
+  const lons=bb.map(c=>c[0]), lats=bb.map(c=>c[1]);
+  const pts=[[Math.min(...lons)-nbPad,Math.min(...lats)-nbPad*.6],[Math.max(...lons)+nbPad,Math.max(...lats)+nbPad*.6]].map(P), xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]);
   const b=box(), w=Math.max(...xs)-Math.min(...xs), h=Math.max(...ys)-Math.min(...ys), pad=40;
   st.k = Math.min((b.width-2*pad)/w,(b.height-2*pad)/h);
   st.tx = (b.width - w*st.k)/2 - Math.min(...xs)*st.k; st.ty=(b.height-h*st.k)/2 - Math.min(...ys)*st.k; apply();
@@ -265,14 +288,28 @@ function list(){
       r.onclick=()=>select(s,true); g.appendChild(r); });
     L.appendChild(g);
   }
+  const nq = q ? (D.neighbors||[]).filter(n=>[n.name,n.fac,n.num,n.id,n.vhf,n.callsign].some(v=>String(v).toLowerCase().includes(q))) : (st.area?[]:nbs);
+  [...new Set(nq.map(n=>n.fac))].sort().forEach(f=>{
+    const g=document.createElement('div'); g.className='grp'; g.innerHTML=`<h3><i style="background:#71717a"></i>${f} · adjacent</h3>`;
+    nq.filter(n=>n.fac===f).sort((a,b)=>a.floor-b.floor||a.num.localeCompare(b.num)).forEach(n=>{ const r=document.createElement('div'); r.className='row'+(st.sel===n?' sel':'');
+      r.innerHTML=`<b style="color:#d4d4d8">${nbTag(n)}</b><span class="n">${n.name}</span><span class="f">${n.vhf}</span><span class="alt">${fmtNbAlt(n)}</span>`;
+      r.onclick=()=>select(n,true); g.appendChild(r); });
+    L.appendChild(g); });
   if(!L.children.length) L.innerHTML='<div style="padding:14px;color:var(--muted)">No sectors.</div>';
 }
 function select(s,fromList){
-  if(fromList && !groups.flat().includes(s)){ st.mode=s.strat; render(); }
+  if(s.fac){ if(fromList && !nbs.includes(s)){ const fl=s.floor===0?100:Math.min(s.floor+10,450); st.mode='ALT'; st.fl=fl; $('#tNb').checked=true; render(); } }
+  else if(fromList && !groups.flat().includes(s)){ st.mode=s.strat; render(); }
   st.sel=s; detail(); paint(); list();
 }
 function detail(){
   const d=$('#detail'), s=st.sel; if(!s){ d.className=''; d.innerHTML=''; return; }
+  if(s.fac){ d.className='on'; d.innerHTML=`<button class="x" title="Close">×</button><h2 style="color:#d4d4d8">${nbTag(s)}</h2>
+    <div class="st">${s.name.toUpperCase()} · ${s.fac} (adjacent ARTCC)</div><table>
+    <tr><td>Altitudes</td><td>${fmtNbAlt(s)}</td></tr><tr><td>VHF</td><td class="m">${s.vhf}</td></tr>
+    <tr><td>UHF</td><td class="m">${s.uhf||'—'}</td></tr><tr><td>Callsign</td><td class="m">${s.callsign}</td></tr>
+    <tr><td>ZID ref</td><td class="m">${s.id}</td></tr></table>`;
+    d.querySelector('.x').onclick=()=>{st.sel=null;detail();paint();list();}; return; }
   const c=AREA_COL[s.area], under=s.derivedFrom.map(n=>SECS.find(x=>x.num===n)).map(tag).join(' + ');
   const stack=SECS.filter(x=>x.strat!=='LO' && (x.derived?x.derivedFrom:[x.num]).some(n=>(s.derived?s.derivedFrom:[s.num]).includes(n))).sort((a,b)=>a.floor-b.floor);
   d.className='on';
@@ -293,12 +330,13 @@ function detail(){
 // ---------- controls
 document.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>{ st.mode=b.dataset.m; render(); });
 $('#alt').oninput=e=>{ st.fl=+e.target.value; render(); };
+$('#tNb').onchange=()=>{ if(st.sel&&st.sel.fac) st.sel=null; detail(); render(); };
 ['#tApt','#tTrc','#tLbl'].forEach(i=>$(i).onchange=()=>{ $('#gTrc').style.display=$('#tTrc').checked?'':'none'; labels(); });
 $('#search').oninput=e=>{ st.q=e.target.value; list(); };
 window.addEventListener('keydown',e=>{ if(e.target.tagName==='INPUT') return;
   const m={'1':'LO','2':'HI','3':'IM','4':'SH','5':'ALT'}[e.key]; if(m){ st.mode=m; render(); }
   if(e.key==='Escape'){ st.sel=null; detail(); paint(); list(); } });
-$('#foot').textContent = 'Sources: '+D.source+'. LO/HI boundaries from CRC ERAM Filter 1/11 maps; IM/SH footprints inferred from the HI sectors below them. Not for real-world navigation.';
+$('#foot').textContent = 'Sources: '+D.source+'. LO/HI boundaries from CRC ERAM Filter 1/11 maps; IM/SH footprints inferred from the HI sectors below them. Adjacent ARTCC sectors from ZAU/ZOB/ZDC/ZTL/ZME/ZKC CRC maps. Not for real-world navigation.';
 
 render(); fit();
 })();
