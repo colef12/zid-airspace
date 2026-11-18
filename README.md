@@ -13,6 +13,9 @@ Interactive map of Indianapolis ARTCC (ZID) sectors. Live at **https://colef12.g
 
 Colors are by Area of Specialization (1–7). Hover for ID/freq, click for full details (altitudes, VHF/UHF, callsign, FPAs, stack). URL hash keeps the view (`#hi`, `#alt/330`).
 
+## Offline (iPad / iPhone)
+Open the site once in Safari while online, tap **Share → Add to Home Screen**, then launch it from the home-screen icon. The app shell and data are cached by a service worker (`sw.js`), so it opens with no connection. When you're online it fetches fresh data automatically; open it once after an update to refresh the offline copy.
+
 ## Data
 - **Sector info** (name, ID, number, altitudes, freqs, FPAs, area): ZID Order 7210.1H (7/11/2024), Ch. 4–10. VHF freqs are from CRC where present (full 25 kHz precision).
 - **LO/HI boundaries**: CRC `ZID.json` ERAM video maps *Filter 1 – Low Sectors* / *Filter 11 – High Sectors*, polygonized. Labels cross-checked against every CRC event-split group (all pass).

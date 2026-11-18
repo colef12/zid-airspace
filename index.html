@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ZID Airspace — Indianapolis ARTCC Sectors</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="ZID">
+<meta name="theme-color" content="#18181b">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M4 8 14 4l14 6-2 16-12 3-10-8z' fill='%237c4dff'/></svg>">
 <style>
   :root{
@@ -406,5 +413,6 @@ $('#foot').textContent = 'Sources: '+D.source+'. LO/HI boundaries from CRC ERAM 
 procUI(); renderProcs(); render(); fit();
 })();
 </script>
+<script>if('serviceWorker' in navigator) addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>
